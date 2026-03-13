@@ -28,3 +28,17 @@ export const MAX_WEEKLY_PUSHES = 2
 export const CRITICAL_RETURN_WEEK = 3
 export const LONG_ABSENCE_DAYS = 5   // 5+ days → Variante B return block
 export const SHORT_ABSENCE_DAYS = 2  // 2–4 days → Variante A return block
+
+// ─── Weekly reflection ───────────────────────────────────────────────────────
+/** Qualitative response options for S-08 — no hierarchy between them */
+export const WEEKLY_OPTIONS = [
+  { key: "si",       label: "Sí, lo sentí" },
+  { key: "a-medias", label: "A medias" },
+  { key: "dificil",  label: "Esta semana fue difícil" },
+] as const
+
+export type WeeklyOptionKey = typeof WEEKLY_OPTIONS[number]["key"]
+
+// ─── Calendar ────────────────────────────────────────────────────────────────
+/** Week column headers, Monday-first. */
+export const DAY_HEADERS = ["L", "M", "M", "J", "V", "S", "D"] as const
