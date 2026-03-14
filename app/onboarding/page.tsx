@@ -4,12 +4,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 
+import { createClient } from "@/lib/supabase/client"
 import { useAppState } from "@/hooks/useAppState"
 import { WelcomeStep } from "@/features/habit/components/WelcomeStep"
 import { HabitStep } from "@/features/habit/components/HabitStep"
 import { AnclaStep } from "@/features/habit/components/AnclaStep"
 import { SummaryStep } from "@/features/habit/components/SummaryStep"
-import { saveHabit } from "@/lib/supabase/actions"
+import { saveHabit, markOnboardingComplete } from "@/lib/supabase/actions"
 import type { HabitFormData, AnclaFormData } from "@/features/habit/schemas"
 
 type Step = "welcome" | "habit" | "ancla" | "summary"
@@ -18,11 +19,13 @@ const STEP_ORDER: Step[] = ["welcome", "habit", "ancla", "summary"]
 
 export default function OnboardingPage() {
   const router = useRouter()
-  const { updateState, userId } = useAppState()
+  const { updateState } = useAppState()
 
   const [step, setStep] = useState<Step>("welcome")
   const [habitData, setHabitData] = useState<HabitFormData | null>(null)
   const [anclaData, setAnclaData] = useState<AnclaFormData | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
   function goNext(current: Step) {
     const idx = STEP_ORDER.indexOf(current)
@@ -47,6 +50,20 @@ export default function OnboardingPage() {
   async function handleComplete() {
     if (!habitData || !anclaData) return
 
+    setSaving(true)
+    setSaveError(null)
+
+    const supabase = createClient()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      setSaveError("No pudimos verificar tu sesión. Volvé a intentar.")
+      setSaving(false)
+      return
+    }
+
     const today = new Date()
     const createdAt = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`
 
@@ -58,7 +75,22 @@ export default function OnboardingPage() {
       createdAt,
     }
 
-    // Actualizar estado local optimísticamente
+    const { error } = await saveHabit(user.id, habit)
+
+    if (error) {
+      setSaveError("No pudimos guardar. Revisá tu conexión e intentá de nuevo.")
+      setSaving(false)
+      return
+    }
+
+    const { error: profileError } = await markOnboardingComplete(user.id)
+
+    if (profileError) {
+      setSaveError("Se guardó el hábito pero hubo un error actualizando tu perfil. Intentá de nuevo.")
+      setSaving(false)
+      return
+    }
+
     updateState(() => ({
       onboardingComplete: true,
       habit,
@@ -66,13 +98,7 @@ export default function OnboardingPage() {
       weeklyReflections: [],
     }))
 
-    // Persistir en Supabase (fire-and-forget — el usuario ya navegó)
-    if (userId) {
-      saveHabit(userId, habit).catch((err) =>
-        console.error("[forma] onboarding saveHabit:", err)
-      )
-    }
-
+    setSaving(false)
     router.push("/")
   }
 
@@ -113,6 +139,8 @@ export default function OnboardingPage() {
             anclaData={anclaData}
             onComplete={handleComplete}
             onBack={() => goBack("summary")}
+            isSaving={saving}
+            saveError={saveError}
           />
         )}
       </motion.div>

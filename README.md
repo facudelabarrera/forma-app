@@ -56,16 +56,29 @@ Supabase Dashboard → SQL Editor → New query
 
 Copiá y ejecutá el contenido de `lib/supabase/schema.sql`.
 
-**c. Habilitar Magic Link:**
+**c. Habilitar Email + Password:**
 
 ```
 Supabase Dashboard → Authentication → Providers → Email
 ```
 
-Asegurate de que "Enable Email provider" esté activado.
-Para desarrollo, podés desactivar "Confirm email" para simplificar el flujo.
+- Activar "Enable Email provider"
+- **Desactivar** "Confirm email" (recomendado para MVP: permite login inmediato sin verificar mail)
+- Si querés verificación de email estricta, dejalo activado y el usuario deberá confirmar por mail antes de poder ingresar
 
-**d. Agregar URLs de redirección (CRÍTICO para magic link):**
+**d. Ejecutar migración de profiles:**
+
+```
+Supabase Dashboard → SQL Editor → New query
+```
+
+Copiá y ejecutá el contenido de `lib/supabase/migration-profiles.sql`. Esto crea:
+- Tabla `profiles` con `onboarding_completed`
+- RLS para que cada usuario solo vea su profile
+- Trigger que crea automáticamente un profile al registrarse
+- Backfill de usuarios existentes que ya tienen hábito activo
+
+**e. Agregar URLs de redirección (para recovery y callbacks):**
 
 ```
 Supabase Dashboard → Authentication → URL Configuration
@@ -74,11 +87,9 @@ Supabase Dashboard → Authentication → URL Configuration
 - **Site URL (dev):** `http://localhost:3000`
 - **Redirect URLs (dev):** `http://localhost:3000/auth/callback`
 
-Para producción en Vercel, una vez que tengas la URL:
+Para producción en Vercel:
 - **Site URL (prod):** `https://tu-app.vercel.app`
 - **Redirect URLs (prod):** `https://tu-app.vercel.app/auth/callback`
-
-> Si no configurás el Redirect URL correcto, el magic link redirige a un error.
 
 ### 4. Correr el proyecto
 
@@ -131,6 +142,36 @@ Authentication → URL Configuration → Site URL → https://tu-app.vercel.app
 Authentication → URL Configuration → Redirect URLs → https://tu-app.vercel.app/auth/callback
 ```
 
+### 6. Usar forma.vercel.app como dominio
+
+1. **Vercel Dashboard** → tu proyecto → **Settings** → **Domains**
+2. Agregá `forma.vercel.app` (Vercel lo asigna si está disponible)
+3. **Supabase** → Authentication → URL Configuration:
+   - Site URL: `https://forma.vercel.app`
+   - Redirect URLs: `https://forma.vercel.app/auth/callback`
+4. Si tenés la URL anterior (ej. forma-app-three.vercel.app), mantenela también en Redirect URLs hasta confirmar que la nueva funciona.
+
+---
+
+## Troubleshooting
+
+### "Email o contraseña incorrectos"
+- Verificá que estés usando el email con el que te registraste.
+- La contraseña distingue mayúsculas/minúsculas.
+
+### "Este email ya tiene una cuenta"
+- Intentá "Iniciar sesión" en vez de "Crear cuenta".
+
+### No puedo registrarme
+1. **Supabase proyecto pausado:** En el plan free, los proyectos se pausan tras inactividad. Entrá al dashboard y reactivalo.
+2. **Email provider:** Authentication → Providers → Email → "Enable Email provider" activado.
+3. **Rate limit:** Demasiados intentos en poco tiempo. Esperá unos minutos.
+4. **Confirm email:** Si tenés "Confirm email" activado en Supabase, revisá tu bandeja de entrada (y spam) para el link de confirmación.
+
+### El onboarding no se guarda
+- Asegurate de haber ejecutado `lib/supabase/migration-profiles.sql` en el SQL Editor de Supabase.
+- Verificá que la tabla `profiles` exista con RLS habilitado.
+
 ---
 
 ## Estructura del repositorio
@@ -141,7 +182,7 @@ forma-app/
 │   ├── layout.tsx
 │   ├── page.tsx                # Home (RhythmScreen o redirect)
 │   ├── login/
-│   │   └── page.tsx            # Pantalla de login (magic link)
+│   │   └── page.tsx            # Pantalla de acceso (email + password)
 │   ├── auth/
 │   │   └── callback/
 │   │       └── route.ts        # Handler de callback OAuth/magic link
@@ -165,8 +206,9 @@ forma-app/
 │   ├── supabase/
 │   │   ├── client.ts           # Browser client
 │   │   ├── server.ts           # Server client
-│   │   ├── actions.ts          # Helpers de persistencia (saveHabit, saveEntry, saveReflection)
-│   │   └── schema.sql          # Schema SQL inicial
+│   │   ├── actions.ts          # Helpers de persistencia (saveHabit, saveEntry, saveReflection, markOnboardingComplete)
+│   │   ├── schema.sql          # Schema SQL completo (habits, entries, reflections, profiles)
+│   │   └── migration-profiles.sql  # Migración para agregar tabla profiles (ejecutar una vez)
 │   ├── utils.ts
 │   └── constants.ts
 │
@@ -208,7 +250,9 @@ forma-app/
 
 - [x] Fase A — Arquitectura y decisiones de diseño
 - [x] Fase B — Wireframes UX completos
-- [x] Base técnica — Supabase + Auth + Persistencia + Deploy
+- [x] Base técnica — Supabase + Auth (email+password) + Persistencia + Deploy
+- [x] Auth rebuild — flujo separado crear cuenta / iniciar sesión
+- [x] Profiles table — onboarding_completed como source of truth
 - [ ] Fase C — High-fi + Design System
 - [ ] Push notifications
 - [ ] Onboarding de permisos (S-05)

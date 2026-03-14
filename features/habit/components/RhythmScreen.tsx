@@ -23,6 +23,12 @@ export function RhythmScreen() {
   const [checkSheetOpen, setCheckSheetOpen] = useState(false)
   const [weeklyOverlayOpen, setWeeklyOverlayOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+  const [pendingRetry, setPendingRetry] = useState<
+    | { type: "entry"; entry: { date: string; state: CheckState } }
+    | { type: "reflection"; reflection: { week: number; completedAt: string; qualitativeResponse: string } }
+    | null
+  >(null)
 
   const router = useRouter()
   const screen = useRhythmScreen(state)
@@ -40,8 +46,10 @@ export function RhythmScreen() {
     )
   }
 
-  function handleCheck(checkState: CheckState) {
+  async function handleCheck(checkState: CheckState) {
     const entry = { date: screen.todayStr, state: checkState }
+    setSyncError(null)
+    setPendingRetry(null)
 
     updateState((prev) => ({
       ...prev,
@@ -52,18 +60,22 @@ export function RhythmScreen() {
     }))
 
     if (userId && habit) {
-      saveEntry(userId, habit.id, entry).catch((err) =>
-        console.error("[forma] saveEntry:", err)
-      )
+      const { error } = await saveEntry(userId, habit.id, entry)
+      if (error) {
+        setSyncError("No se pudo guardar. Revisá tu conexión.")
+        setPendingRetry({ type: "entry", entry })
+      }
     }
   }
 
-  function handleWeeklyReflection(response: WeeklyOptionKey) {
+  async function handleWeeklyReflection(response: WeeklyOptionKey) {
     const reflection = {
       week: screen.weekToReflect,
       completedAt: new Date().toISOString(),
       qualitativeResponse: response,
     }
+    setSyncError(null)
+    setPendingRetry(null)
 
     updateState((prev) => ({
       ...prev,
@@ -71,9 +83,25 @@ export function RhythmScreen() {
     }))
 
     if (userId && habit) {
-      saveReflection(userId, habit.id, reflection).catch((err) =>
-        console.error("[forma] saveReflection:", err)
-      )
+      const { error } = await saveReflection(userId, habit.id, reflection)
+      if (error) {
+        setSyncError("No se pudo guardar la reflexión. Revisá tu conexión.")
+        setPendingRetry({ type: "reflection", reflection })
+      }
+    }
+  }
+
+  async function handleRetry() {
+    if (!userId || !habit || !pendingRetry) return
+    setSyncError(null)
+    if (pendingRetry.type === "entry") {
+      const { error } = await saveEntry(userId, habit.id, pendingRetry.entry)
+      if (error) setSyncError("No se pudo guardar. Revisá tu conexión.")
+      else setPendingRetry(null)
+    } else {
+      const { error } = await saveReflection(userId, habit.id, pendingRetry.reflection)
+      if (error) setSyncError("No se pudo guardar la reflexión. Revisá tu conexión.")
+      else setPendingRetry(null)
     }
   }
 
@@ -106,6 +134,28 @@ export function RhythmScreen() {
         transition={{ duration: 0.25, ease: "easeOut" }}
       >
         <ScreenContainer className="gap-0 pt-5">
+
+          {syncError && (
+            <div className="mb-4 p-3 rounded-xl bg-destructive/10 border border-destructive/20 flex flex-col gap-2">
+              <p className="font-body text-sm text-destructive">{syncError}</p>
+              <div className="flex gap-2">
+                {pendingRetry && (
+                  <button
+                    onClick={handleRetry}
+                    className="font-body text-xs text-foreground hover:underline"
+                  >
+                    Reintentar
+                  </button>
+                )}
+                <button
+                  onClick={() => { setSyncError(null); setPendingRetry(null) }}
+                  className="font-body text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Identity bar */}
           <div className="flex items-center gap-2 mb-4">

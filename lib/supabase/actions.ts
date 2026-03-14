@@ -3,8 +3,31 @@
 import { createClient } from "./client"
 import type { Habit, DailyEntry, WeeklyReflection } from "@/types"
 
+/** Marca el onboarding como completado en la tabla profiles. */
+export async function markOnboardingComplete(
+  userId: string
+): Promise<{ error: string | null }> {
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from("profiles")
+    .upsert(
+      { user_id: userId, onboarding_completed: true, updated_at: new Date().toISOString() },
+      { onConflict: "user_id" }
+    )
+
+  if (error) {
+    console.error("[forma] markOnboardingComplete:", error.message)
+    return { error: error.message }
+  }
+  return { error: null }
+}
+
 /** Guarda un hábito nuevo en Supabase. Desactiva el anterior si existía. */
-export async function saveHabit(userId: string, habit: Habit): Promise<void> {
+export async function saveHabit(
+  userId: string,
+  habit: Habit
+): Promise<{ error: string | null }> {
   const supabase = createClient()
 
   await supabase
@@ -22,7 +45,11 @@ export async function saveHabit(userId: string, habit: Habit): Promise<void> {
     is_active: true,
   })
 
-  if (error) console.error("[forma] saveHabit:", error.message)
+  if (error) {
+    console.error("[forma] saveHabit:", error.message)
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 /** Guarda (o actualiza) un registro diario. Upsert por (user_id, habit_id, date). */
@@ -30,7 +57,7 @@ export async function saveEntry(
   userId: string,
   habitId: string,
   entry: DailyEntry
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const supabase = createClient()
 
   const { error } = await supabase.from("daily_entries").upsert(
@@ -44,7 +71,11 @@ export async function saveEntry(
     { onConflict: "user_id,habit_id,date" }
   )
 
-  if (error) console.error("[forma] saveEntry:", error.message)
+  if (error) {
+    console.error("[forma] saveEntry:", error.message)
+    return { error: error.message }
+  }
+  return { error: null }
 }
 
 /** Guarda (o actualiza) una reflexión semanal. Upsert por (user_id, habit_id, week_number). */
@@ -52,7 +83,7 @@ export async function saveReflection(
   userId: string,
   habitId: string,
   reflection: WeeklyReflection
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const supabase = createClient()
 
   const { error } = await supabase.from("weekly_reflections").upsert(
@@ -67,5 +98,9 @@ export async function saveReflection(
     { onConflict: "user_id,habit_id,week_number" }
   )
 
-  if (error) console.error("[forma] saveReflection:", error.message)
+  if (error) {
+    console.error("[forma] saveReflection:", error.message)
+    return { error: error.message }
+  }
+  return { error: null }
 }

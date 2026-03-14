@@ -21,7 +21,8 @@ export function useAppState() {
   const router = useRouter()
 
   useEffect(() => {
-    // Carga rápida desde localStorage para evitar flash
+    let active = true
+
     try {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) setState(JSON.parse(stored))
@@ -29,39 +30,54 @@ export function useAppState() {
       // ignore
     }
 
-    // Carga autoritativa desde Supabase
-    async function loadFromSupabase() {
-      // Sin env vars configuradas, usar solo localStorage
-      if (
-        !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-        !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      ) {
-        setLoaded(true)
-        return
-      }
+    if (
+      !process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    ) {
+      setLoaded(true)
+      return
+    }
 
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+    const supabase = createClient()
+
+    async function syncFromUser(user: { id: string } | null) {
+      if (!active) return
 
       if (!user) {
+        setUserId(null)
+        setState(DEFAULT_STATE)
+        try { localStorage.removeItem(STORAGE_KEY) } catch {}
         setLoaded(true)
         return
       }
 
       setUserId(user.id)
 
-      const { data: habit } = await supabase
-        .from("habits")
-        .select("*")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle()
+      const [{ data: profile }, { data: habit }] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("onboarding_completed")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("habits")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle(),
+      ])
 
-      if (!habit) {
-        setState(DEFAULT_STATE)
-        try { localStorage.removeItem(STORAGE_KEY) } catch {}
+      if (!active) return
+
+      const onboardingComplete = profile?.onboarding_completed ?? !!habit
+
+      if (!onboardingComplete || !habit) {
+        const noHabitState: AppState = {
+          ...DEFAULT_STATE,
+          onboardingComplete,
+        }
+        setState(noHabitState)
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(noHabitState)) } catch {}
         setLoaded(true)
         return
       }
@@ -78,6 +94,8 @@ export function useAppState() {
           .eq("habit_id", habit.id)
           .order("week_number", { ascending: true }),
       ])
+
+      if (!active) return
 
       const newState: AppState = {
         onboardingComplete: true,
@@ -102,13 +120,29 @@ export function useAppState() {
       }
 
       setState(newState)
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(newState))
-      } catch {}
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(newState)) } catch {}
       setLoaded(true)
     }
 
-    loadFromSupabase()
+    async function init() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      await syncFromUser(user ? { id: user.id } : null)
+    }
+
+    void init()
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      void syncFromUser(session?.user ? { id: session.user.id } : null)
+    })
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const updateState = useCallback((updater: (prev: AppState) => AppState) => {

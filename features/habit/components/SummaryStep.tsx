@@ -9,9 +9,18 @@ interface SummaryStepProps {
   anclaData: AnclaFormData
   onComplete: () => void
   onBack: () => void
+  isSaving?: boolean
+  saveError?: string | null
 }
 
-export function SummaryStep({ habitData, anclaData, onComplete, onBack }: SummaryStepProps) {
+export function SummaryStep({
+  habitData,
+  anclaData,
+  onComplete,
+  onBack,
+  isSaving = false,
+  saveError = null,
+}: SummaryStepProps) {
   return (
     <AppShell>
       <ScreenContainer className="gap-0 pt-5">
@@ -67,10 +76,13 @@ export function SummaryStep({ habitData, anclaData, onComplete, onBack }: Summar
 
         {/* CTAs */}
         <div className="mt-auto pt-8 flex flex-col gap-3">
-          <PrimaryButton onClick={onComplete}>
-            Empezar hoy
+          {saveError && (
+            <p className="font-body text-sm text-destructive">{saveError}</p>
+          )}
+          <PrimaryButton onClick={onComplete} disabled={isSaving}>
+            {isSaving ? "Guardando…" : saveError ? "Reintentar" : "Empezar hoy"}
           </PrimaryButton>
-          <SecondaryButton variant="ghost" onClick={onBack}>
+          <SecondaryButton variant="ghost" onClick={onBack} disabled={isSaving}>
             Volver
           </SecondaryButton>
         </div>

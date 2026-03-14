@@ -124,13 +124,13 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply font-sans bg-background text-foreground;
+    @apply font-body bg-background text-foreground;
   }
   h1, h2, h3 {
     @apply font-display;
   }
   html {
-    @apply font-sans;
+    @apply font-body;
   }
 }
 
