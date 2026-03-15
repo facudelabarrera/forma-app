@@ -5,8 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
 
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { PrimaryButton } from "@/components/core"
-import { cn } from "@/lib/utils"
+import { PrimaryButton, OptionButton } from "@/components/core"
 import { CHECK_OPTIONS } from "@/lib/constants"
 import type { CheckState } from "@/types"
 
@@ -16,7 +15,6 @@ interface DailyCheckSheetProps {
   identity: string
   habitName: string
   onCheck: (state: CheckState) => void
-  /** Pass true when opening from the return block — changes the header copy */
   isReturn?: boolean
 }
 
@@ -52,7 +50,7 @@ export function DailyCheckSheet({
     <Sheet open={open} onOpenChange={handleClose}>
       <SheetContent
         side="bottom"
-        className="rounded-t-3xl border-0 bg-background px-6 pb-10 pt-6 focus:outline-none"
+        className="rounded-t-2xl border-t border-border bg-card px-6 pb-10 pt-6 focus:outline-none shadow-lg"
       >
         <AnimatePresence mode="wait">
           {!selected ? (
@@ -64,7 +62,6 @@ export function DailyCheckSheet({
               transition={{ duration: 0.2 }}
               className="flex flex-col gap-5"
             >
-              {/* Header */}
               <div className="flex items-start justify-between gap-3">
                 <p className="font-body text-sm text-muted-foreground leading-snug">
                   {isReturn
@@ -73,29 +70,20 @@ export function DailyCheckSheet({
                 </p>
                 <button
                   onClick={handleClose}
-                  className="text-muted-foreground p-1 -mt-0.5 shrink-0"
+                  className="text-muted-foreground p-1 -mt-0.5 shrink-0 rounded-full hover:bg-accent transition-colors duration-200"
                   aria-label="Cerrar"
                 >
                   <X size={20} strokeWidth={1.5} />
                 </button>
               </div>
 
-              {/* Tristate options — equal visual weight */}
               <div className="flex flex-col gap-3">
                 {(Object.keys(CHECK_OPTIONS) as CheckState[]).map(state => (
-                  <button
+                  <OptionButton
                     key={state}
+                    label={CHECK_OPTIONS[state].label}
                     onClick={() => handleSelect(state)}
-                    className={cn(
-                      "w-full h-14 rounded-2xl",
-                      "border border-border bg-card",
-                      "font-body text-base font-medium text-foreground",
-                      "hover:bg-accent transition-colors duration-150",
-                      "active:scale-[0.98]"
-                    )}
-                  >
-                    {CHECK_OPTIONS[state].label}
-                  </button>
+                  />
                 ))}
               </div>
             </motion.div>

@@ -11,7 +11,6 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
     <AppShell>
       <ScreenContainer className="justify-between pt-16 pb-10">
 
-        {/* Brand + copy */}
         <div className="flex flex-col gap-8">
           <div className="flex flex-col gap-2">
             <p className="font-body text-xs uppercase tracking-widest text-muted-foreground">
@@ -32,7 +31,6 @@ export function WelcomeStep({ onNext }: WelcomeStepProps) {
           </div>
         </div>
 
-        {/* CTA */}
         <PrimaryButton onClick={onNext}>
           Empezar
         </PrimaryButton>

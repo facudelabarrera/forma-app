@@ -4,8 +4,7 @@ import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X } from "lucide-react"
 
-import { PrimaryButton, SectionLabel, SupportMessage } from "@/components/core"
-import { cn } from "@/lib/utils"
+import { PrimaryButton, SectionLabel, SupportMessage, OptionButton, Card } from "@/components/core"
 import { WEEKLY_OPTIONS, GRID_OPACITY, DAY_HEADERS, type WeeklyOptionKey } from "@/lib/constants"
 import type { DayCell } from "@/features/habit/hooks/useRhythmScreen"
 import type { CheckState } from "@/types"
@@ -71,14 +70,13 @@ export function WeeklyReflectionOverlay({
     >
       <div className="flex flex-col flex-1 max-w-[430px] mx-auto w-full px-6 pt-6 pb-10">
 
-        {/* Header row */}
         <div className="flex items-center justify-between mb-8">
           <p className="font-body text-xs uppercase tracking-widest text-muted-foreground">
             Reflexión · Semana {weekNumber}
           </p>
           <button
             onClick={handleClose}
-            className="text-muted-foreground p-1 -mr-1 rounded-full hover:bg-accent transition-colors"
+            className="text-muted-foreground p-1 -mr-1 rounded-full hover:bg-accent transition-colors duration-200"
             aria-label="Cerrar"
           >
             <X size={20} strokeWidth={1.5} />
@@ -87,7 +85,6 @@ export function WeeklyReflectionOverlay({
 
         <AnimatePresence mode="wait">
 
-          {/* ── INTRO ── */}
           {step === "intro" && (
             <motion.div
               key="intro"
@@ -105,7 +102,6 @@ export function WeeklyReflectionOverlay({
                   No es una evaluación. Es una pausa para reconocer el proceso.
                 </p>
 
-                {/* Mini week preview */}
                 <div className="mt-4">
                   <SectionLabel className="mb-3">Tu semana {weekNumber}</SectionLabel>
                   <MiniWeekGrid cells={lastWeekCells} />
@@ -118,7 +114,6 @@ export function WeeklyReflectionOverlay({
             </motion.div>
           )}
 
-          {/* ── QUESTION ── */}
           {step === "question" && (
             <motion.div
               key="question"
@@ -132,42 +127,30 @@ export function WeeklyReflectionOverlay({
                 ¿Esta semana actuaste como alguien que {identity}?
               </h2>
 
-              {/* Mini-grid */}
               <div>
                 <SectionLabel className="mb-3">Tu semana</SectionLabel>
                 <MiniWeekGrid cells={lastWeekCells} />
               </div>
 
-              {/* Options */}
               <div className="flex flex-col gap-3">
                 {WEEKLY_OPTIONS.map(({ key, label }) => (
-                  <button
+                  <OptionButton
                     key={key}
+                    label={label}
                     onClick={() => handleSelect(key)}
-                    className={cn(
-                      "w-full h-14 rounded-2xl",
-                      "border border-border bg-card",
-                      "font-body text-base font-medium text-foreground",
-                      "hover:bg-accent transition-colors duration-150",
-                      "active:scale-[0.98]"
-                    )}
-                  >
-                    {label}
-                  </button>
+                  />
                 ))}
               </div>
 
-              {/* Escape — "Ahora no" per wireframe spec */}
               <button
                 onClick={handleClose}
-                className="font-body text-sm text-muted-foreground text-center py-2 mt-auto"
+                className="font-body text-sm text-muted-foreground text-center py-2 mt-auto hover:text-foreground transition-colors duration-200"
               >
                 Ahora no
               </button>
             </motion.div>
           )}
 
-          {/* ── REFLECTION ── */}
           {step === "reflection" && selected && (
             <motion.div
               key="reflection"
@@ -176,27 +159,23 @@ export function WeeklyReflectionOverlay({
               transition={{ duration: 0.2 }}
               className="flex flex-col flex-1 gap-6"
             >
-              {/* Selected response */}
               <div className="flex flex-col gap-2">
                 <SectionLabel>Tu respuesta</SectionLabel>
-                <div className={cn(
-                  "w-full h-14 rounded-2xl px-4 flex items-center",
-                  "border border-border bg-accent/10",
-                  "font-body text-base font-medium text-foreground"
-                )}>
-                  {WEEKLY_OPTIONS.find(o => o.key === selected)?.label}
+                <OptionButton
+                  label={WEEKLY_OPTIONS.find(o => o.key === selected)?.label ?? ""}
+                  selected
+                />
+              </div>
+
+              <Card>
+                <div className="flex flex-col gap-2">
+                  <SectionLabel>Reflexión de la semana</SectionLabel>
+                  <p className="font-body text-sm text-foreground leading-relaxed">
+                    {REFLECTION_COPY[selected](identity, habitName)}
+                  </p>
                 </div>
-              </div>
+              </Card>
 
-              {/* Template reflection */}
-              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-2">
-                <SectionLabel>Reflexión de la semana</SectionLabel>
-                <p className="font-body text-sm text-foreground leading-relaxed">
-                  {REFLECTION_COPY[selected](identity, habitName)}
-                </p>
-              </div>
-
-              {/* Week stats */}
               <div className="flex justify-between">
                 <div>
                   <p className="font-body text-[11px] text-muted-foreground mb-0.5">
@@ -216,7 +195,6 @@ export function WeeklyReflectionOverlay({
                 </div>
               </div>
 
-              {/* Reconnection message */}
               <SupportMessage
                 message="Esta práctica no se trata de hacerlo perfecto. Se trata de seguir construyendo."
                 className="text-center px-4"
@@ -251,7 +229,7 @@ function MiniWeekGrid({ cells }: { cells: DayCell[] }) {
       <div className="grid grid-cols-7 gap-1">
         {cells.map(({ date, state }) => {
           if (state === "future") {
-            return <div key={date} className="aspect-square rounded-sm border border-border" />
+            return <div key={date} className="aspect-square rounded-sm border border-border/60" />
           }
           const opacity =
             state === "empty" ? GRID_OPACITY["empty"] : GRID_OPACITY[state as CheckState]

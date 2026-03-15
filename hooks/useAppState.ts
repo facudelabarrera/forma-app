@@ -17,6 +17,7 @@ const DEFAULT_STATE: AppState = {
 export function useAppState() {
   const [state, setState] = useState<AppState>(DEFAULT_STATE)
   const [loaded, setLoaded] = useState(false)
+  const [fetchError, setFetchError] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
   const router = useRouter()
 
@@ -53,7 +54,10 @@ export function useAppState() {
 
       setUserId(user.id)
 
-      const [{ data: profile }, { data: habit }] = await Promise.all([
+      const [
+        { data: profile, error: profileError },
+        { data: habit, error: habitError },
+      ] = await Promise.all([
         supabase
           .from("profiles")
           .select("onboarding_completed")
@@ -69,6 +73,13 @@ export function useAppState() {
 
       if (!active) return
 
+      if (profileError || habitError) {
+        console.error("[forma] useAppState fetch:", profileError?.message ?? habitError?.message)
+        setFetchError(true)
+        setLoaded(true)
+        return
+      }
+
       const onboardingComplete = profile?.onboarding_completed ?? !!habit
 
       if (!onboardingComplete || !habit) {
@@ -82,7 +93,10 @@ export function useAppState() {
         return
       }
 
-      const [{ data: entries }, { data: reflections }] = await Promise.all([
+      const [
+        { data: entries, error: entriesError },
+        { data: reflections, error: reflectionsError },
+      ] = await Promise.all([
         supabase
           .from("daily_entries")
           .select("*")
@@ -94,6 +108,15 @@ export function useAppState() {
           .eq("habit_id", habit.id)
           .order("week_number", { ascending: true }),
       ])
+
+      if (!active) return
+
+      if (entriesError || reflectionsError) {
+        console.error("[forma] useAppState fetch:", entriesError?.message ?? reflectionsError?.message)
+        setFetchError(true)
+        setLoaded(true)
+        return
+      }
 
       if (!active) return
 
@@ -171,5 +194,14 @@ export function useAppState() {
     router.replace("/login")
   }, [router])
 
-  return { state, updateState, seedState, loaded, userId, signOut }
+  const retryFetch = useCallback(() => {
+    setFetchError(false)
+    setLoaded(false)
+    setState(DEFAULT_STATE)
+    // Re-run by unmounting/remounting is not needed — reset loaded triggers re-init
+    // Instead, we just reload the page for simplicity
+    window.location.reload()
+  }, [])
+
+  return { state, updateState, seedState, loaded, fetchError, retryFetch, userId, signOut }
 }

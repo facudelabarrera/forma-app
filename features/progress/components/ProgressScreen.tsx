@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { motion } from "framer-motion"
 
-import { AppShell, ScreenContainer, TopBar, Card, SectionLabel, Divider, SupportMessage } from "@/components/core"
+import { AppShell, ScreenContainer, TopBar, Card, SectionLabel, Divider, SupportMessage, IdentityPill, ErrorBlock } from "@/components/core"
 import { useAppState } from "@/hooks/useAppState"
 import { useRhythmScreen } from "@/features/habit/hooks/useRhythmScreen"
 import { RhythmGrid } from "@/features/habit/components/RhythmGrid"
@@ -74,16 +74,32 @@ function computeMilestones(entries: DailyEntry[], createdAt: string): {
 
 export function ProgressScreen() {
   const router = useRouter()
-  const { state, loaded } = useAppState()
+  const { state, loaded, fetchError, retryFetch, userId } = useAppState()
   const screen = useRhythmScreen(state)
 
   useEffect(() => {
-    if (loaded && !state.habit) {
-      router.replace("/")
+    if (!loaded) return
+    if (!fetchError && !state.habit) {
+      router.replace(userId ? "/onboarding" : "/login")
     }
-  }, [loaded, state.habit, router])
+  }, [loaded, fetchError, state.habit, userId, router])
 
   if (!loaded) return null
+
+  if (fetchError) {
+    return (
+      <AppShell>
+        <TopBar title="Tu proceso" showBack onBack={() => router.push("/")} />
+        <ScreenContainer className="items-center justify-center">
+          <ErrorBlock
+            message="No pudimos cargar tus datos. Revisá tu conexión."
+            onRetry={retryFetch}
+            onDismiss={retryFetch}
+          />
+        </ScreenContainer>
+      </AppShell>
+    )
+  }
 
   const { habit, entries } = state
 
@@ -108,13 +124,10 @@ export function ProgressScreen() {
           onBack={() => router.push("/")}
         />
 
-        <ScreenContainer className="gap-0 pt-2">
+        <ScreenContainer className="gap-0 pt-4">
 
-          {/* Identity */}
           <div className="mb-6">
-            <span className="font-body text-sm font-medium text-foreground bg-accent rounded-full px-3 py-1 leading-snug">
-              Soy alguien que {habit.identity}
-            </span>
+            <IdentityPill identity={habit.identity} />
             <p className="font-body text-xs text-muted-foreground mt-3">
               {habit.name} · desde el {formatDate(createdAt)}
             </p>
@@ -122,7 +135,6 @@ export function ProgressScreen() {
 
           <Divider className="mb-6" />
 
-          {/* Full history grid */}
           <SectionLabel className="mb-3">Tu ritmo completo</SectionLabel>
 
           {screen.showGrid ? (
@@ -133,7 +145,6 @@ export function ProgressScreen() {
 
           <Divider className="mt-6 mb-6" />
 
-          {/* Evidence stats */}
           <SectionLabel className="mb-3">Tu evidencia</SectionLabel>
 
           <div className="grid grid-cols-2 gap-3 mb-6">
@@ -169,26 +180,25 @@ export function ProgressScreen() {
             )}
           </div>
 
-          {/* Milestones */}
           {milestones.length > 0 && (
             <>
               <Divider className="mb-6" />
 
               <SectionLabel className="mb-3">Momentos del proceso</SectionLabel>
 
-              <div className="flex flex-col gap-3 mb-6">
+              <div className="flex flex-col gap-4 mb-6">
                 {milestones.map(m => (
-                  <div key={m.id} className="flex flex-col gap-0.5">
-                    <p className="font-body text-xs text-muted-foreground">
+                  <Card key={m.id} className="p-4">
+                    <p className="font-body text-[11px] text-muted-foreground mb-0.5">
                       {formatDate(m.date)}
                     </p>
                     <p className="font-body text-sm font-medium text-foreground">
                       {m.label}
                     </p>
-                    <p className="font-body text-xs text-muted-foreground leading-relaxed">
+                    <p className="font-body text-xs text-muted-foreground leading-relaxed mt-1">
                       {m.description}
                     </p>
-                  </div>
+                  </Card>
                 ))}
               </div>
             </>
@@ -196,7 +206,6 @@ export function ProgressScreen() {
 
           <Divider className="mb-6" />
 
-          {/* Identity connection */}
           <SupportMessage
             message="Cada práctica es evidencia de quien estás construyendo ser."
             className="text-center px-4 pb-4"

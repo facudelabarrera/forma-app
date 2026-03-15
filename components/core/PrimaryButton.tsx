@@ -6,10 +6,6 @@ interface PrimaryButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   fullWidth?: boolean
 }
 
-/**
- * PrimaryButton — main CTA button.
- * Full-width by default, FORMA accent color.
- */
 export function PrimaryButton({
   children,
   loading = false,
@@ -25,11 +21,12 @@ export function PrimaryButton({
       disabled={isDisabled}
       className={cn(
         "flex items-center justify-center gap-2",
-        "h-14 px-6 rounded-2xl",
-        "bg-primary text-primary-foreground",
+        "h-12 px-6 rounded-xl",
+        "bg-primary text-primary-foreground shadow-sm",
         "font-body font-medium text-base",
-        "transition-all duration-150",
+        "transition-all duration-200 ease-out",
         "hover:opacity-90 active:scale-[0.98]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
         "disabled:opacity-40 disabled:cursor-not-allowed",
         fullWidth && "w-full",
         className

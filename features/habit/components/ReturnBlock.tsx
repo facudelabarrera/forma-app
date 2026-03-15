@@ -20,10 +20,10 @@ export function ReturnBlock({ variant, identity, habitName, totalDays }: ReturnB
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
       className={cn(
-        "rounded-2xl px-4 py-3",
+        "rounded-xl px-4 py-3 shadow-sm",
         variant === "C"
-          ? "bg-forma-gold/10 border border-forma-gold/25"
-          : "bg-accent border border-border"
+          ? "bg-forma-gold/8 border border-forma-gold/20"
+          : "bg-card border border-border"
       )}
     >
       <p className="font-body text-sm text-foreground leading-relaxed">{copy}</p>

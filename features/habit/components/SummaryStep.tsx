@@ -1,6 +1,6 @@
 "use client"
 
-import { AppShell, ScreenContainer, PrimaryButton, Card, SectionLabel, Divider, SecondaryButton } from "@/components/core"
+import { AppShell, ScreenContainer, PrimaryButton, Card, SectionLabel, Divider, SecondaryButton, ErrorBlock, ProgressDots } from "@/components/core"
 import type { HabitFormData } from "../schemas"
 import type { AnclaFormData } from "../schemas"
 
@@ -23,16 +23,10 @@ export function SummaryStep({
 }: SummaryStepProps) {
   return (
     <AppShell>
-      <ScreenContainer className="gap-0 pt-5">
+      <ScreenContainer className="gap-0 pt-6">
 
-        {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
-          <div className="h-1 w-6 rounded-full bg-foreground" />
-          <div className="h-1 w-6 rounded-full bg-foreground" />
-          <div className="h-1 w-6 rounded-full bg-foreground" />
-        </div>
+        <ProgressDots total={3} current={3} className="mb-8" />
 
-        {/* Header */}
         <div className="flex flex-col gap-2 mb-8">
           <h2 className="font-display text-2xl text-foreground leading-tight">
             Así empieza tu ritmo
@@ -42,7 +36,6 @@ export function SummaryStep({
           </p>
         </div>
 
-        {/* Summary card */}
         <Card>
           <div className="flex flex-col gap-5">
 
@@ -74,12 +67,11 @@ export function SummaryStep({
           </div>
         </Card>
 
-        {/* CTAs */}
         <div className="mt-auto pt-8 flex flex-col gap-3">
           {saveError && (
-            <p className="font-body text-sm text-destructive">{saveError}</p>
+            <ErrorBlock message={saveError} />
           )}
-          <PrimaryButton onClick={onComplete} disabled={isSaving}>
+          <PrimaryButton onClick={onComplete} loading={isSaving} disabled={isSaving}>
             {isSaving ? "Guardando…" : saveError ? "Reintentar" : "Empezar hoy"}
           </PrimaryButton>
           <SecondaryButton variant="ghost" onClick={onBack} disabled={isSaving}>

@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
-import { AppShell, ScreenContainer, PrimaryButton, FormInput } from "@/components/core"
+import { AppShell, ScreenContainer, PrimaryButton, FormInput, ProgressDots, SectionLabel } from "@/components/core"
 import { habitSchema, type HabitFormData } from "../schemas"
 
 interface HabitStepProps {
@@ -23,16 +23,10 @@ export function HabitStep({ defaultValues, onNext }: HabitStepProps) {
 
   return (
     <AppShell>
-      <ScreenContainer className="gap-0 pt-5">
+      <ScreenContainer className="gap-0 pt-6">
 
-        {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
-          <div className="h-1 w-6 rounded-full bg-foreground" />
-          <div className="h-1 w-6 rounded-full bg-border" />
-          <div className="h-1 w-6 rounded-full bg-border" />
-        </div>
+        <ProgressDots total={3} current={1} className="mb-8" />
 
-        {/* Header */}
         <div className="flex flex-col gap-2 mb-8">
           <h2 className="font-display text-2xl text-foreground leading-tight">
             ¿Quién querés ser?
@@ -42,14 +36,11 @@ export function HabitStep({ defaultValues, onNext }: HabitStepProps) {
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit(onNext)} className="flex flex-col gap-6 flex-1">
           <div className="flex flex-col gap-1.5">
-            <p className="font-body text-xs uppercase tracking-widest text-muted-foreground mb-1">
-              Tu identidad
-            </p>
+            <SectionLabel className="mb-1">Tu identidad</SectionLabel>
             <p className="font-body text-sm text-muted-foreground mb-3">
-              Completá: "Soy alguien que…"
+              Completá: &quot;Soy alguien que…&quot;
             </p>
             <FormInput
               label="Identidad"
@@ -60,9 +51,7 @@ export function HabitStep({ defaultValues, onNext }: HabitStepProps) {
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <p className="font-body text-xs uppercase tracking-widest text-muted-foreground mb-1">
-              El hábito concreto
-            </p>
+            <SectionLabel className="mb-1">El hábito concreto</SectionLabel>
             <p className="font-body text-sm text-muted-foreground mb-3">
               ¿Qué hacés exactamente?
             </p>

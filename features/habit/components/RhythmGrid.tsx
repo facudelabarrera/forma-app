@@ -13,7 +13,6 @@ interface RhythmGridProps {
 export function RhythmGrid({ weeks, todayStr }: RhythmGridProps) {
   return (
     <div className="w-full">
-      {/* Day headers */}
       <div className="grid grid-cols-7 gap-1 mb-2">
         {DAY_HEADERS.map((day, i) => (
           <div
@@ -25,7 +24,6 @@ export function RhythmGrid({ weeks, todayStr }: RhythmGridProps) {
         ))}
       </div>
 
-      {/* Week rows */}
       <div className="flex flex-col gap-1">
         {weeks.map((week, wi) => (
           <div key={wi} className="grid grid-cols-7 gap-1">
@@ -47,14 +45,14 @@ function GridCell({
   isToday: boolean
 }) {
   const todayRing = isToday
-    ? "ring-2 ring-foreground ring-offset-1 ring-offset-background"
+    ? "ring-2 ring-foreground/60 ring-offset-1 ring-offset-background"
     : ""
 
   if (state === "future") {
     return (
       <div
         className={cn(
-          "aspect-square rounded-sm border border-border",
+          "aspect-square rounded-sm border border-border/60",
           todayRing
         )}
       />

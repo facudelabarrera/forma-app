@@ -1,7 +1,7 @@
 "use client"
 
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { SectionLabel } from "@/components/core"
+import { SectionLabel, Divider } from "@/components/core"
 
 interface SettingsSheetProps {
   open: boolean
@@ -9,14 +9,15 @@ interface SettingsSheetProps {
   habitName: string
   identity: string
   onSignOut: () => void
+  onEditHabit: () => void
 }
 
-export function SettingsSheet({ open, onClose, habitName, identity, onSignOut }: SettingsSheetProps) {
+export function SettingsSheet({ open, onClose, habitName, identity, onSignOut, onEditHabit }: SettingsSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent
         side="bottom"
-        className="rounded-t-3xl border-0 bg-background px-6 pb-10 pt-6 focus:outline-none"
+        className="rounded-t-2xl border-t border-border bg-card px-6 pb-10 pt-6 focus:outline-none shadow-lg"
       >
         <div className="flex flex-col gap-5">
           <SectionLabel>Tu hábito</SectionLabel>
@@ -31,11 +32,18 @@ export function SettingsSheet({ open, onClose, habitName, identity, onSignOut }:
             <p className="font-body text-sm text-foreground">{habitName}</p>
           </div>
 
-          <div className="h-px bg-border" />
+          <Divider />
+
+          <button
+            onClick={() => { onClose(); onEditHabit() }}
+            className="font-body text-sm text-muted-foreground text-left hover:text-foreground transition-colors duration-200"
+          >
+            Editar hábito
+          </button>
 
           <button
             onClick={onSignOut}
-            className="font-body text-sm text-muted-foreground text-left hover:text-foreground transition-colors"
+            className="font-body text-sm text-muted-foreground text-left hover:text-foreground transition-colors duration-200"
           >
             Cerrar sesión
           </button>

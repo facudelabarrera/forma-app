@@ -5,10 +5,6 @@ interface SecondaryButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElem
   fullWidth?: boolean
 }
 
-/**
- * SecondaryButton — secondary action button.
- * Two variants: outline (bordered) and ghost (text-only).
- */
 export function SecondaryButton({
   children,
   variant = "outline",
@@ -20,13 +16,14 @@ export function SecondaryButton({
     <button
       className={cn(
         "flex items-center justify-center gap-2",
-        "h-14 px-6 rounded-2xl",
+        "h-12 px-6 rounded-xl",
         "font-body font-medium text-base",
-        "transition-all duration-150",
+        "transition-all duration-200 ease-out",
         "active:scale-[0.98]",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20",
         "disabled:opacity-40 disabled:cursor-not-allowed",
         variant === "outline" && [
-          "border border-border",
+          "border border-border bg-card",
           "text-foreground",
           "hover:bg-accent",
         ],

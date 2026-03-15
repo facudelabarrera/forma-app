@@ -3,14 +3,9 @@ import { cn } from "@/lib/utils"
 interface CardProps {
   children: React.ReactNode
   className?: string
-  /** Make the card pressable/clickable */
   onClick?: () => void
 }
 
-/**
- * Card — FORMA content card.
- * Used for habit display, stats blocks, and entry items.
- */
 export function Card({ children, className, onClick }: CardProps) {
   const Tag = onClick ? "button" : "div"
 
@@ -18,11 +13,11 @@ export function Card({ children, className, onClick }: CardProps) {
     <Tag
       onClick={onClick}
       className={cn(
-        "w-full bg-card rounded-2xl border border-border p-5",
+        "w-full bg-card rounded-xl border border-border p-5 shadow-sm",
         "text-left",
         onClick && [
-          "transition-all duration-150",
-          "hover:border-primary/30 hover:shadow-sm",
+          "transition-all duration-200 ease-out",
+          "hover:shadow-md hover:border-border",
           "active:scale-[0.99]",
           "cursor-pointer",
         ],

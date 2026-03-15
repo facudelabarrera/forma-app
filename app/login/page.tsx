@@ -3,9 +3,17 @@
 import { Suspense, useState, useEffect } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
-import { AppShell, ScreenContainer, PrimaryButton, FormInput, SecondaryButton } from "@/components/core"
+import {
+  AuthLayout,
+  PrimaryButton,
+  SecondaryButton,
+  FormInput,
+  ErrorBlock,
+  NoticeBlock,
+  LoadingScreen,
+} from "@/components/core"
 
-type AuthMode = "choose" | "login" | "signup" | "forgot" | "forgot-sent"
+type AuthMode = "choose" | "login" | "signup" | "forgot" | "forgot-sent" | "confirm-email"
 
 function getAuthErrorMessage(error: string): string {
   const lower = error.toLowerCase()
@@ -27,7 +35,7 @@ function getAuthErrorMessage(error: string): string {
   if (lower.includes("signup") && lower.includes("disabled")) {
     return "El registro no está habilitado en este momento."
   }
-  if (lower.includes("user not found") || lower.includes("email") && lower.includes("not found")) {
+  if (lower.includes("user not found") || (lower.includes("email") && lower.includes("not found"))) {
     return "No encontramos una cuenta con ese email."
   }
   return "Ocurrió un error. Intentá de nuevo."
@@ -45,8 +53,6 @@ function AuthForm() {
   const [notice, setNotice] = useState<string | null>(null)
 
   useEffect(() => {
-    // Si llega un código de Supabase directamente a /login (ej. desde el email de reset password),
-    // lo reenviamos al callback para que lo procese correctamente.
     const code = searchParams.get("code")
     if (code) {
       router.replace(`/auth/callback?code=${code}&type=recovery`)
@@ -77,6 +83,7 @@ function AuthForm() {
 
   function switchMode(newMode: AuthMode) {
     resetForm()
+    setNotice(null)
     setMode(newMode)
   }
 
@@ -96,12 +103,26 @@ function AuthForm() {
 
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
     if (error) {
       setError(getAuthErrorMessage(error.message))
       setLoading(false)
       return
+    }
+
+    const userId = data.user?.id
+    if (userId) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("user_id", userId)
+        .maybeSingle()
+
+      if (!profile?.onboarding_completed) {
+        router.replace("/onboarding")
+        return
+      }
     }
 
     router.replace("/")
@@ -119,11 +140,18 @@ function AuthForm() {
 
     setLoading(true)
     const supabase = createClient()
-    const { error } = await supabase.auth.signUp({ email, password })
+    const { data, error } = await supabase.auth.signUp({ email, password })
 
     if (error) {
       setError(getAuthErrorMessage(error.message))
       setLoading(false)
+      return
+    }
+
+    // If no session, Supabase requires email confirmation before proceeding
+    if (!data.session) {
+      setLoading(false)
+      setMode("confirm-email")
       return
     }
 
@@ -145,287 +173,209 @@ function AuthForm() {
     setLoading(false)
 
     if (error) {
-      // Always show success to avoid user enumeration
       if (process.env.NODE_ENV === "development") {
         console.error("[forma] resetPasswordForEmail:", error.message)
       }
     }
 
-    // Siempre mostramos el estado de éxito (seguridad: no revelar si el email existe)
     setMode("forgot-sent")
   }
 
-  // ─── Pantalla: elegir modo ────────────────────────────────────────────────
   if (mode === "choose") {
     return (
-      <AppShell>
-        <ScreenContainer>
-          <div className="flex flex-col gap-8 justify-center min-h-screen pb-12">
-            <div className="flex flex-col gap-3">
-              <h1 className="font-display text-4xl text-foreground leading-tight">FORMA</h1>
-              <p className="font-body text-base text-muted-foreground leading-relaxed">
-                Construí tu identidad, un hábito a la vez.
-              </p>
-            </div>
+      <AuthLayout
+        title="FORMA"
+        subtitle="Construí tu identidad, un hábito a la vez."
+      >
+        {error && <ErrorBlock message={error} onDismiss={() => setError(null)} />}
+        {notice && <NoticeBlock message={notice} onDismiss={() => setNotice(null)} />}
 
-            {error && (
-              <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-                <p className="font-body text-sm text-destructive">{error}</p>
-              </div>
-            )}
-
-            {notice && (
-              <div className="p-3 rounded-xl bg-foreground/5 border border-border">
-                <p className="font-body text-sm text-foreground">{notice}</p>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-3">
-              <PrimaryButton onClick={() => switchMode("signup")}>
-                Crear cuenta
-              </PrimaryButton>
-              <SecondaryButton variant="outline" onClick={() => switchMode("login")}>
-                Iniciar sesión
-              </SecondaryButton>
-            </div>
-          </div>
-        </ScreenContainer>
-      </AppShell>
+        <div className="flex flex-col gap-3">
+          <PrimaryButton onClick={() => switchMode("signup")}>
+            Crear cuenta
+          </PrimaryButton>
+          <SecondaryButton variant="outline" onClick={() => switchMode("login")}>
+            Iniciar sesión
+          </SecondaryButton>
+        </div>
+      </AuthLayout>
     )
   }
 
-  // ─── Pantalla: iniciar sesión ─────────────────────────────────────────────
   if (mode === "login") {
     return (
-      <AppShell>
-        <ScreenContainer>
-          <form onSubmit={handleLogin} className="flex flex-col gap-8 justify-center min-h-screen pb-12" noValidate>
-            <div className="flex flex-col gap-3">
-              <h1 className="font-display text-3xl text-foreground leading-tight">Iniciar sesión</h1>
-              <p className="font-body text-base text-muted-foreground leading-relaxed">
-                Ingresá con tu email y contraseña.
-              </p>
-            </div>
+      <AuthLayout
+        title="Iniciar sesión"
+        subtitle="Ingresá con tu email y contraseña."
+        onBack={() => switchMode("choose")}
+      >
+        {notice && <NoticeBlock message={notice} onDismiss={() => setNotice(null)} />}
 
-            {notice && (
-              <div className="p-3 rounded-xl bg-foreground/5 border border-border">
-                <p className="font-body text-sm text-foreground">{notice}</p>
-              </div>
-            )}
+        <form onSubmit={handleLogin} className="flex flex-col gap-4" noValidate>
+          <FormInput
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(null) }}
+            placeholder="tu@email.com"
+            autoComplete="email"
+            autoFocus
+          />
 
-            <div className="flex flex-col gap-4">
-              <FormInput
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(null) }}
-                placeholder="tu@email.com"
-                autoComplete="email"
-                autoFocus
-              />
+          <FormInput
+            label="Contraseña"
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(null) }}
+            placeholder="Tu contraseña"
+            autoComplete="current-password"
+          />
 
-              <FormInput
-                label="Contraseña"
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(null) }}
-                placeholder="Tu contraseña"
-                autoComplete="current-password"
-              />
+          {error && <ErrorBlock message={error} onDismiss={() => setError(null)} />}
 
-              {error && (
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-                  <p className="font-body text-sm text-destructive">{error}</p>
-                </div>
-              )}
+          <PrimaryButton type="submit" loading={loading} disabled={loading}>
+            {loading ? "Ingresando…" : "Ingresar"}
+          </PrimaryButton>
 
-              <PrimaryButton type="submit" loading={loading} disabled={loading}>
-                {loading ? "Ingresando…" : "Ingresar"}
-              </PrimaryButton>
-
-              <button
-                type="button"
-                onClick={() => { setError(null); switchMode("forgot") }}
-                className="font-body text-sm text-muted-foreground text-center hover:text-foreground transition-colors"
-              >
-                Olvidé mi contraseña
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => switchMode("choose")}
-              className="font-body text-sm text-muted-foreground self-start hover:text-foreground transition-colors"
-            >
-              ← Volver
-            </button>
-          </form>
-        </ScreenContainer>
-      </AppShell>
+          <button
+            type="button"
+            onClick={() => { setError(null); switchMode("forgot") }}
+            className="font-body text-sm text-muted-foreground text-center hover:text-foreground transition-colors duration-200"
+          >
+            Olvidé mi contraseña
+          </button>
+        </form>
+      </AuthLayout>
     )
   }
 
-  // ─── Pantalla: crear cuenta ───────────────────────────────────────────────
   if (mode === "signup") {
     return (
-      <AppShell>
-        <ScreenContainer>
-          <form onSubmit={handleSignup} className="flex flex-col gap-8 justify-center min-h-screen pb-12" noValidate>
-            <div className="flex flex-col gap-3">
-              <h1 className="font-display text-3xl text-foreground leading-tight">Crear cuenta</h1>
-              <p className="font-body text-base text-muted-foreground leading-relaxed">
-                Elegí un email y una contraseña para empezar.
-              </p>
-            </div>
+      <AuthLayout
+        title="Crear cuenta"
+        subtitle="Elegí un email y una contraseña para empezar."
+        onBack={() => switchMode("choose")}
+      >
+        <form onSubmit={handleSignup} className="flex flex-col gap-4" noValidate>
+          <FormInput
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(null) }}
+            placeholder="tu@email.com"
+            autoComplete="email"
+            autoFocus
+          />
 
-            <div className="flex flex-col gap-4">
-              <FormInput
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(null) }}
-                placeholder="tu@email.com"
-                autoComplete="email"
-                autoFocus
-              />
+          <FormInput
+            label="Contraseña"
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(null) }}
+            placeholder="Mínimo 6 caracteres"
+            autoComplete="new-password"
+            hint="Mínimo 6 caracteres"
+          />
 
-              <FormInput
-                label="Contraseña"
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(null) }}
-                placeholder="Mínimo 6 caracteres"
-                autoComplete="new-password"
-                hint="Mínimo 6 caracteres"
-              />
+          <FormInput
+            label="Confirmar contraseña"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => { setConfirmPassword(e.target.value); setError(null) }}
+            placeholder="Repetí tu contraseña"
+            autoComplete="new-password"
+          />
 
-              <FormInput
-                label="Confirmar contraseña"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => { setConfirmPassword(e.target.value); setError(null) }}
-                placeholder="Repetí tu contraseña"
-                autoComplete="new-password"
-              />
+          {error && <ErrorBlock message={error} onDismiss={() => setError(null)} />}
 
-              {error && (
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-                  <p className="font-body text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              <PrimaryButton type="submit" loading={loading} disabled={loading}>
-                {loading ? "Creando cuenta…" : "Crear cuenta"}
-              </PrimaryButton>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => switchMode("choose")}
-              className="font-body text-sm text-muted-foreground self-start hover:text-foreground transition-colors"
-            >
-              ← Volver
-            </button>
-          </form>
-        </ScreenContainer>
-      </AppShell>
+          <PrimaryButton type="submit" loading={loading} disabled={loading}>
+            {loading ? "Creando cuenta…" : "Crear cuenta"}
+          </PrimaryButton>
+        </form>
+      </AuthLayout>
     )
   }
 
-  // ─── Pantalla: olvidé mi contraseña ──────────────────────────────────────
   if (mode === "forgot") {
     return (
-      <AppShell>
-        <ScreenContainer>
-          <form onSubmit={handleForgot} className="flex flex-col gap-8 justify-center min-h-screen pb-12" noValidate>
-            <div className="flex flex-col gap-3">
-              <h1 className="font-display text-3xl text-foreground leading-tight">Recuperar contraseña</h1>
-              <p className="font-body text-base text-muted-foreground leading-relaxed">
-                Ingresá tu email y te enviamos un link para crear una nueva contraseña.
-              </p>
-            </div>
+      <AuthLayout
+        title="Recuperar contraseña"
+        subtitle="Ingresá tu email y te enviamos un link para crear una nueva contraseña."
+        backLabel="← Volver al inicio de sesión"
+        onBack={() => switchMode("login")}
+      >
+        <form onSubmit={handleForgot} className="flex flex-col gap-4" noValidate>
+          <FormInput
+            label="Email"
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(null) }}
+            placeholder="tu@email.com"
+            autoComplete="email"
+            autoFocus
+          />
 
-            <div className="flex flex-col gap-4">
-              <FormInput
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(null) }}
-                placeholder="tu@email.com"
-                autoComplete="email"
-                autoFocus
-              />
+          {error && <ErrorBlock message={error} onDismiss={() => setError(null)} />}
 
-              {error && (
-                <div className="p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-                  <p className="font-body text-sm text-destructive">{error}</p>
-                </div>
-              )}
-
-              <PrimaryButton type="submit" loading={loading} disabled={loading}>
-                {loading ? "Enviando…" : "Enviar link"}
-              </PrimaryButton>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => switchMode("login")}
-              className="font-body text-sm text-muted-foreground self-start hover:text-foreground transition-colors"
-            >
-              ← Volver al inicio de sesión
-            </button>
-          </form>
-        </ScreenContainer>
-      </AppShell>
+          <PrimaryButton type="submit" loading={loading} disabled={loading}>
+            {loading ? "Enviando…" : "Enviar link"}
+          </PrimaryButton>
+        </form>
+      </AuthLayout>
     )
   }
 
-  // ─── Pantalla: link de recuperación enviado ───────────────────────────────
-  return (
-    <AppShell>
-      <ScreenContainer>
-        <div className="flex flex-col gap-8 justify-center min-h-screen pb-12">
-          <div className="flex flex-col gap-3">
-            <h1 className="font-display text-3xl text-foreground leading-tight">Revisá tu email</h1>
-            <p className="font-body text-base text-muted-foreground leading-relaxed">
-              Si existe una cuenta asociada a{" "}
-              <span className="text-foreground font-medium">{email}</span>, vas a recibir un link para
-              crear una nueva contraseña.
-            </p>
-            <p className="font-body text-sm text-muted-foreground leading-relaxed">
-              Si no aparece en unos minutos, revisá tu carpeta de spam.
-            </p>
-          </div>
+  if (mode === "confirm-email") {
+    return (
+      <AuthLayout
+        title="Confirmá tu email"
+        subtitle={`Te enviamos un link de confirmación a ${email}. Hacé clic en el link para activar tu cuenta y empezar el proceso.`}
+      >
+        <p className="font-body text-sm text-muted-foreground leading-relaxed -mt-4">
+          Si no aparece en unos minutos, revisá tu carpeta de spam.
+        </p>
 
-          <div className="flex flex-col gap-3">
-            <SecondaryButton variant="outline" onClick={() => { resetForm(); setMode("forgot") }}>
-              Reenviar link
-            </SecondaryButton>
-            <button
-              type="button"
-              onClick={() => switchMode("login")}
-              className="font-body text-sm text-muted-foreground text-center hover:text-foreground transition-colors"
-            >
-              Volver al inicio de sesión
-            </button>
-          </div>
+        <div className="flex flex-col gap-3">
+          <button
+            type="button"
+            onClick={() => switchMode("choose")}
+            className="font-body text-sm text-muted-foreground text-center hover:text-foreground transition-colors duration-200"
+          >
+            Volver al inicio
+          </button>
         </div>
-      </ScreenContainer>
-    </AppShell>
+      </AuthLayout>
+    )
+  }
+
+  return (
+    <AuthLayout
+      title="Revisá tu email"
+      subtitle={`Si existe una cuenta asociada a ${email}, vas a recibir un link para crear una nueva contraseña.`}
+    >
+      <p className="font-body text-sm text-muted-foreground leading-relaxed -mt-4">
+        Si no aparece en unos minutos, revisá tu carpeta de spam.
+      </p>
+
+      <div className="flex flex-col gap-3">
+        <SecondaryButton variant="outline" onClick={() => { resetForm(); setMode("forgot") }}>
+          Reenviar link
+        </SecondaryButton>
+        <button
+          type="button"
+          onClick={() => switchMode("login")}
+          className="font-body text-sm text-muted-foreground text-center hover:text-foreground transition-colors duration-200"
+        >
+          Volver al inicio de sesión
+        </button>
+      </div>
+    </AuthLayout>
   )
 }
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <AppShell>
-          <ScreenContainer className="items-center justify-center min-h-screen">
-            <p className="font-body text-sm text-muted-foreground">Cargando…</p>
-          </ScreenContainer>
-        </AppShell>
-      }
-    >
+    <Suspense fallback={<LoadingScreen />}>
       <AuthForm />
     </Suspense>
   )

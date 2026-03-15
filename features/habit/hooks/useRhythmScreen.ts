@@ -127,7 +127,7 @@ export function useRhythmScreen(state: AppState): RhythmScreenData {
 
   const entryMap = new Map(entries.map(e => [e.date, e.state]))
   const hasCheckedToday = entryMap.has(todayStr)
-  const totalDays = entries.length
+  const totalDays = entries.filter(e => e.state !== "hoy-no").length
 
   // Absence detection
   const sortedEntries = [...entries].sort((a, b) => b.date.localeCompare(a.date))
@@ -156,10 +156,12 @@ export function useRhythmScreen(state: AppState): RhythmScreenData {
 
   const weeksData = buildWeeksGrid(createdAt, todayStr, entryMap)
 
-  // This week's checked days
+  // This week's checked days (excluding "hoy-no")
   const monday = getWeekMonday(today)
   const mondayStr = toDateStr(monday)
-  const thisWeekCount = entries.filter(e => e.date >= mondayStr && e.date <= todayStr).length
+  const thisWeekCount = entries.filter(
+    e => e.date >= mondayStr && e.date <= todayStr && e.state !== "hoy-no"
+  ).length
 
   // Weekly reflection trigger: available once a new week starts (currentWeek >= 2)
   // and no reflection has been recorded for the previous week

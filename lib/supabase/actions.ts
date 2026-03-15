@@ -30,10 +30,15 @@ export async function saveHabit(
 ): Promise<{ error: string | null }> {
   const supabase = createClient()
 
-  await supabase
+  const { error: deactivateError } = await supabase
     .from("habits")
     .update({ is_active: false })
     .eq("user_id", userId)
+
+  if (deactivateError) {
+    console.error("[forma] saveHabit deactivate:", deactivateError.message)
+    return { error: deactivateError.message }
+  }
 
   const { error } = await supabase.from("habits").upsert({
     id: habit.id,

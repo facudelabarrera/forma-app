@@ -9,10 +9,6 @@ interface TopBarProps {
   className?: string
 }
 
-/**
- * TopBar — app navigation bar.
- * Sits at the top of each screen. All props optional.
- */
 export function TopBar({
   title,
   showBack = false,
@@ -23,31 +19,28 @@ export function TopBar({
   return (
     <div
       className={cn(
-        "flex items-center justify-between h-14 px-4 shrink-0",
+        "flex items-center justify-between h-14 px-4 shrink-0 border-b border-border/50",
         className
       )}
     >
-      {/* Left — back button or spacer */}
       <div className="w-10 flex items-center">
         {showBack && (
           <button
             onClick={onBack}
             aria-label="Volver"
-            className="flex items-center justify-center w-10 h-10 -ml-2 text-foreground/70 hover:text-foreground transition-colors"
+            className="flex items-center justify-center w-10 h-10 -ml-2 text-muted-foreground hover:text-foreground transition-colors duration-200"
           >
             <ChevronLeft size={24} strokeWidth={1.5} />
           </button>
         )}
       </div>
 
-      {/* Center — title */}
       {title && (
-        <span className="font-body text-sm font-medium text-foreground/60 tracking-wide uppercase">
+        <span className="font-body text-sm font-medium text-muted-foreground tracking-wide uppercase">
           {title}
         </span>
       )}
 
-      {/* Right — custom element or spacer */}
       <div className="w-10 flex items-center justify-end">
         {rightElement}
       </div>

@@ -3,7 +3,7 @@
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 
-import { AppShell, ScreenContainer, PrimaryButton, SecondaryButton, FormInput } from "@/components/core"
+import { AppShell, ScreenContainer, PrimaryButton, SecondaryButton, FormInput, ProgressDots } from "@/components/core"
 import { anclaSchema, type AnclaFormData } from "../schemas"
 
 const SUGGESTIONS = [
@@ -35,16 +35,10 @@ export function AnclaStep({ defaultValues, onNext, onBack }: AnclaStepProps) {
 
   return (
     <AppShell>
-      <ScreenContainer className="gap-0 pt-5">
+      <ScreenContainer className="gap-0 pt-6">
 
-        {/* Progress */}
-        <div className="flex gap-1.5 mb-8">
-          <div className="h-1 w-6 rounded-full bg-foreground" />
-          <div className="h-1 w-6 rounded-full bg-foreground" />
-          <div className="h-1 w-6 rounded-full bg-border" />
-        </div>
+        <ProgressDots total={3} current={2} className="mb-8" />
 
-        {/* Header */}
         <div className="flex flex-col gap-2 mb-8">
           <h2 className="font-display text-2xl text-foreground leading-tight">
             ¿Cuándo lo hacés?
@@ -54,7 +48,6 @@ export function AnclaStep({ defaultValues, onNext, onBack }: AnclaStepProps) {
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit(onNext)} className="flex flex-col gap-6 flex-1">
           <FormInput
             label="Contexto"
@@ -64,7 +57,6 @@ export function AnclaStep({ defaultValues, onNext, onBack }: AnclaStepProps) {
             {...register("ancla")}
           />
 
-          {/* Suggestion chips */}
           <div className="flex flex-wrap gap-2">
             {SUGGESTIONS.map(s => (
               <button
@@ -74,7 +66,7 @@ export function AnclaStep({ defaultValues, onNext, onBack }: AnclaStepProps) {
                   const current = anclaValue.trim()
                   setValue("ancla", current ? `${current} · ${s}` : s, { shouldValidate: true })
                 }}
-                className="font-body text-xs text-muted-foreground border border-border rounded-full px-3 py-1.5 hover:bg-accent transition-colors"
+                className="font-body text-xs text-muted-foreground border border-border rounded-full px-3 py-1.5 hover:bg-accent hover:text-foreground transition-colors duration-200"
               >
                 {s}
               </button>

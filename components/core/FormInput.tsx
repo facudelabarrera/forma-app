@@ -24,13 +24,13 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
           ref={ref}
           id={inputId}
           className={cn(
-            "w-full h-12 px-4 rounded-2xl",
+            "w-full h-12 px-4 rounded-xl",
             "border border-border bg-card",
             "font-body text-base text-foreground",
-            "placeholder:text-muted-foreground",
-            "focus:outline-none focus:ring-2 focus:ring-foreground/20",
-            "transition-colors duration-150",
-            error && "border-red-400 focus:ring-red-400/20",
+            "placeholder:text-muted-foreground/60",
+            "focus:outline-none focus:ring-2 focus:ring-ring/20 focus:border-ring/30",
+            "transition-all duration-200 ease-out",
+            error && "border-destructive focus:ring-destructive/20",
             className
           )}
           {...props}
@@ -40,7 +40,7 @@ export const FormInput = forwardRef<HTMLInputElement, FormInputProps>(
           <p className="font-body text-xs text-muted-foreground">{hint}</p>
         )}
         {error && (
-          <p className="font-body text-xs text-red-400">{error}</p>
+          <p className="font-body text-xs text-destructive">{error}</p>
         )}
       </div>
     )
